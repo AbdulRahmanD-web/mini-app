@@ -31,7 +31,7 @@
           <div class="hero-landing">
             <h1>Я не сделаю тебя успешным.<br><span class="text-accent">Я дам инструменты.</span><br>Дом построишь сам.</h1>
             <p>Это не мотивация. Это система для парней 14–25, которые устали от игр, пустоты и ленты. Без обещаний за 30 дней. Только то, что работает.</p>
-            <button class="btn btn--primary" onclick="switchTab('materials')">Забрать 5 глав бесплатно</button>
+            <button class="btn btn--primary" id="targetId" onclick="switchTab('view-materials')">Забрать 5 глав бесплатно</button>
           </div>
           <h2 class="section-title mt-0">Что даёт</h2>
           <div class="features-grid">
@@ -52,7 +52,7 @@
             <div class="feature-card">
               <div class="feature-icon">🤖</div>
               <div class="feature-info">
-                <div class="feature-header"><h4>«Бот с ИИ»</h4><span class="badge-soon">Скоро</span></div>
+                <div class="feature-header"><h4>«Бот с ИИ»</h4></div>
                 <p>Помощник, который не дает готовых ответов, а помогает думать.</p>
               </div>
             </div>
@@ -72,7 +72,7 @@
         <div id="materials-final-block" class="final-material-block hidden">
           <h3>Ты прошёл фундамент.</h3>
           <p>Это база. Дальше — полная версия: главы 6–10 и закрытый клуб.</p>
-          <button class="btn btn--primary mb-12" onclick="openTelegramLink('https://t.me/focuschill_bot?start=full_version')">Открыть полную версию</button>
+          <button class="btn btn--primary mb-12" onclick="openTelegramLink('https://t.me/chilldushi?start=full_version')">Открыть полную версию</button>
           <button class="btn btn--secondary" onclick="switchTab('view-home')">Вернуться на главную</button>
         </div>
 
@@ -175,7 +175,7 @@
           <button id="btn-mark-read" class="btn btn--primary" onclick="markAsRead()">Прочитал</button>
           <button id="btn-next-chapter" class="btn btn--primary hidden" onclick="nextChapter()">Следующая глава</button>
           <button id="btn-back-list" class="btn btn--secondary hidden" onclick="closeReader()">К списку</button>
-          <button id="btn-full-version" class="btn btn--primary hidden" onclick="openTelegramLink('https://t.me/focuschill_bot?start=full_version')">Открыть полную версию</button>
+          <button id="btn-full-version" class="btn btn--primary hidden" onclick="openTelegramLink('https://t.me/chilldushi?start=full_version')">Открыть полную версию</button>
         </div>
       </section>
 
