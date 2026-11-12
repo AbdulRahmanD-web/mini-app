@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>DarkKnight</title>
+  
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="loader" id="loader">
+    <div class="loader-spinner"></div>
+    <div class="loader-text">Загрузка</div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="app-container">
+    
+    <main class="main-content" id="main-scroll">
+      
+      <section id="view-home" class="view active">
+        <div id="home-guest">
+          <div class="hero-landing">
+            <h1>Я не сделаю тебя успешным.<br><span class="text-accent">Я дам инструменты.</span><br>Дом построишь сам.</h1>
+            <p>Это не мотивация. Это система для парней 14–25, которые устали от игр, пустоты и ленты. Без обещаний за 30 дней. Только то, что работает.</p>
+            <button class="btn btn--primary" onclick="switchTab('materials')">Забрать 5 глав бесплатно</button>
+          </div>
+          <h2 class="section-title mt-0">Что даёт</h2>
+          <div class="features-grid">
+            <div class="feature-card">
+              <div class="feature-icon">📖</div>
+              <div class="feature-info">
+                <div class="feature-header"><h4>«Тёмный рыцарь»</h4></div>
+                <p>Поймешь, почему чувствуешь пустоту, и с чего начать выбираться.</p>
+              </div>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">💻</div>
+              <div class="feature-info">
+                <div class="feature-header"><h4>«Дневник Junior»</h4></div>
+                <p>Как пройти путь от HTML до первого проекта и не сдаться на 10-й день.</p>
+              </div>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">🤖</div>
+              <div class="feature-info">
+                <div class="feature-header"><h4>«Бот с ИИ»</h4><span class="badge-soon">Скоро</span></div>
+                <p>Помощник, который не дает готовых ответов, а помогает думать.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="home-user" class="hidden">
+          <div class="next-step-card">
+            <h2 id="home-chapter-title">Ты на Главе 1</h2>
+            <p id="home-next-step">Прочитай её и выпиши три источника мусора.</p>
+            <button class="btn btn--primary" onclick="continueReading()">Продолжить</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-materials" class="view">
+        <div id="materials-final-block" class="final-material-block hidden">
+          <h3>Ты прошёл фундамент.</h3>
+          <p>Это база. Дальше — полная версия: главы 6–10 и закрытый клуб.</p>
+          <button class="btn btn--primary mb-12" onclick="openTelegramLink('https://t.me/focuschill_bot?start=full_version')">Открыть полную версию</button>
+          <button class="btn btn--secondary" onclick="switchTab('view-home')">Вернуться на главную</button>
+        </div>
+
+        <div id="state-list" class="hidden">
+          <h1>Материалы</h1>
+          <p class="mb-24">Твой доступ к системе</p>
+          <div id="chapter-list-container"></div>
+        </div>
+
+        <div id="state-empty" class="empty-state">
+          <div class="empty-icon">📖</div>
+          <div class="empty-text">Ты ещё не открыл ни одной главы. Начни с первой. Она занимает 5 минут.</div>
+          <button class="btn btn--primary" onclick="openReader(1)">Открыть первую</button>
+        </div>
+      </section>
+
+      <section id="view-profile" class="view">
+        <div class="profile-header">
+          <div class="profile-avatar" id="ui-avatar">Г</div>
+          <div class="profile-info">
+            <h2 id="ui-name">Гость</h2>
+            <div class="profile-rank" id="ui-rank">Новичок • 0 дней в пути</div>
+            <div class="profile-motto" id="ui-motto">Ты здесь. Начало положено. Не сливайся.</div>
+          </div>
+        </div>
+
+        <div class="chain-card">
+          <div class="chain-top">
+            <span class="chain-title">Цепь дисциплины</span>
+            <span class="chain-streak" id="streakNum">0 дн.</span>
+          </div>
+          <div class="chain-dots" id="chainDots"></div>
+          <div class="chain-msg" id="chainMsg">Цепь пуста. Сделай разбор.</div>
+        </div>
+
+        <div class="progress-card">
+          <span class="progress-text">Прочитано: <span id="stat-read">0</span> из 5</span>
+          <div class="progress-bar-mini"><div class="progress-bar-fill" id="progress-bar"></div></div>
+        </div>
+
+        <div class="review-card">
+          <h3>Вечерний разбор</h3>
+          <input type="text" id="review-did" class="input-field" placeholder="Что сделал сегодня? Факт, без оценок." maxlength="200">
+          <input type="text" id="review-fail" class="input-field" placeholder="Где слился? Честно. Это ценится." maxlength="200">
+          
+          <div class="review-marks">
+            <button class="mark-btn active" data-mark="up" onclick="setMark('up')">▲ День вверх</button>
+            <button class="mark-btn" data-mark="neutral" onclick="setMark('neutral')">— Ровно</button>
+            <button class="mark-btn" data-mark="down" onclick="setMark('down')">▼ Слился</button>
+          </div>
+
+          <button class="btn btn--primary" onclick="saveReview()">Записать</button>
+        </div>
+
+        <div class="capsule-card" id="capsule-container"></div>
+
+        <div class="history-section">
+          <h3>История разборов</h3>
+          <div class="history-list" id="history-list"></div>
+        </div>
+      </section>
+
+      <section id="view-support" class="view">
+        <h1>Поддержка</h1>
+        <p class="mb-24">Если что-то не работает — вот способы решить.</p>
+        <div class="faq-support-list">
+          <div class="faq-support-item"><h4>Не открывается глава?</h4><p>Проверь соединение с интернетом и перезайди в приложение.</p></div>
+          <div class="faq-support-item"><h4>Не пришёл файл от бота?</h4><p>Нажми /start в боте ещё раз, он выдаст материалы повторно.</p></div>
+          <div class="faq-support-item"><h4>Не сохраняется прогресс?</h4><p>Не закрывай Mini App, пока не дочитаешь главу до конца.</p></div>
+          <div class="faq-support-item"><h4>Не работает кнопка?</h4><p>Попробуй обновить приложение или перезапустить Telegram.</p></div>
+        </div>
+        <div class="support-actions">
+          <a href="https://t.me/focus_chill" target="_blank" rel="noopener noreferrer" class="btn btn--primary">Задать вопрос</a>
+        </div>
+        <p class="support-note">Отвечаю в течение дня.<br>Не бот — живой человек.</p>
+      </section>
+
+      <section id="view-reader" class="view reader-view">
+        <header class="reader-header">
+          <button id="btn-custom-back" class="btn-back" onclick="closeReader()" aria-label="Назад">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <div class="header-info">
+            <div class="header-title" id="reader-title">Глава 1. Диагноз</div>
+            <div class="header-counter" id="reader-counter">Глава 1 из 6</div>
+          </div>
+        </header>
+
+        <div class="reader-body">
+          <div class="reader-text" id="reader-content"></div>
+        </div>
+
+        <div class="reader-actions">
+          <div id="reader-action-block" class="action-block">
+            <h3>Действие на сегодня</h3>
+            <p id="action-text">Текст действия</p>
+            <button class="btn btn--secondary" onclick="completeAction()">Сделал</button>
+          </div>
+
+          <button id="btn-mark-read" class="btn btn--primary" onclick="markAsRead()">Прочитал</button>
+          <button id="btn-next-chapter" class="btn btn--primary hidden" onclick="nextChapter()">Следующая глава</button>
+          <button id="btn-back-list" class="btn btn--secondary hidden" onclick="closeReader()">К списку</button>
+          <button id="btn-full-version" class="btn btn--primary hidden" onclick="openTelegramLink('https://t.me/focuschill_bot?start=full_version')">Открыть полную версию</button>
+        </div>
+      </section>
+
+    </main>
+
+    <nav class="bottom-nav" id="bottom-nav">
+      <button type="button" class="nav-item active" data-target="view-home" onclick="switchTab('view-home')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg><span>Главная</span>
+      </button>
+      <button type="button" class="nav-item" data-target="view-materials" onclick="switchTab('view-materials')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg><span>Материалы</span>
+      </button>
+      <button type="button" class="nav-item" data-target="view-profile" onclick="switchTab('view-profile')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg><span>Профиль</span>
+      </button>
+      <button type="button" class="nav-item" data-target="view-support" onclick="switchTab('view-support')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg><span>Помощь</span>
+      </button>
+    </nav>
+
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
