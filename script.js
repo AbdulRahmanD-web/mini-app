@@ -6,7 +6,6 @@ if (tg) {
   tg.setHeaderColor('#0A0A0A'); 
 }
 
-// Глобальные переменные
 let readProgress = [];
 let chainData = { dates: [] };
 let logsData = [];
@@ -14,6 +13,11 @@ let capsuleData = null;
 let currentChapterId = 1;
 let selectedMark = 'up';
 let initDone = false;
+let showAllLogs = false;
+
+// Флаги для аналитики
+let openMainSent = false;
+let capsuleOpenSent = false;
 
 function saveToCloud(key, value) {
   const strValue = JSON.stringify(value);
@@ -35,7 +39,6 @@ function removeFromCloud(key) {
 }
 
 function loadAllData(callback) {
-  // 1. localStorage (мгновенно)
   try {
     readProgress = JSON.parse(localStorage.getItem('readProgress')) || [];
     chainData = JSON.parse(localStorage.getItem('dk_chain')) || { dates: [] };
@@ -45,21 +48,14 @@ function loadAllData(callback) {
     console.error('LocalStorage load error:', e);
   }
 
-  // 2. Если нет облака — сразу callback (browser fallback)
   if (!tg || !tg.CloudStorage) {
     callback();
     return;
   }
 
-  // 3. Облако переопределяет данные
   const keys = ['readProgress', 'dk_chain', 'dk_logs', 'dk_capsule'];
   tg.CloudStorage.getItems(keys, (err, res) => {
-    // ФИКС 1: Обработка ошибки облака (Task 1)
-    if (err) {
-      showToast('Ошибка синхронизации. Прогресс сохранен локально.');
-      console.error('CloudStorage getItems error:', err);
-    } else if (res) {
-      // Защита от null при парсинге
+    if (!err && res) {
       try {
         if (res.readProgress) {
           const parsed = JSON.parse(res.readProgress);
@@ -82,7 +78,6 @@ function loadAllData(callback) {
       }
     }
     
-    // ФИКС 2: принудительная перерисовка, если UI уже отрисовался по таймауту
     if (initDone) {
       renderProfileUI();
       renderChapterList();
@@ -138,11 +133,27 @@ const firstName = user?.first_name || 'Гость';
 const avatarLetter = firstName.charAt(0).toUpperCase();
 
 function init() {
+  // Аналитика: open_main
+  if (tg && !openMainSent) {
+    try {
+      tg.sendData(JSON.stringify({ action: "analytics", event: "open_main", source: "direct" }));
+    } catch(e) { console.error(e); }
+    openMainSent = true;
+  }
+
   document.getElementById('ui-name').innerText = firstName;
   document.getElementById('ui-avatar').innerText = avatarLetter;
   renderChapterList();
   updateHomeScreen();
   renderProfileUI();
+  
+  document.querySelectorAll('.input-field').forEach(input => {
+    input.addEventListener('focus', () => {
+      setTimeout(() => {
+        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 300);
+    });
+  });
 }
 
 function openTelegramLink(url) { if (tg) tg.openTelegramLink(url); else window.open(url, '_blank'); }
@@ -279,10 +290,18 @@ function saveReview() {
   didInput.value = ''; 
   failInput.value = '';
 
+  // Аналитика: finish_evening_review
+  if (tg) {
+    try {
+      tg.sendData(JSON.stringify({ action: "analytics", event: "finish_evening_review", review_day: getTodayKey() }));
+    } catch(e) { console.error(e); }
+  }
+
   if (selectedMark === 'up') showToast('День выигран. Зафиксировано.');
   else if (selectedMark === 'down') showToast('Слив записан. Сделай выводы и вставай.');
   else showToast('Шаг сделан. Идём дальше.');
 
+  showAllLogs = false;
   renderProfileUI();
 }
 
@@ -300,9 +319,20 @@ function renderProfileUI() {
 
 function renderHistory() {
   const list = document.getElementById('history-list');
+  const showMoreBtn = document.getElementById('history-show-more');
+  
   list.innerHTML = '';
-  if (logsData.length === 0) { list.innerHTML = '<p class="history-empty">Пока нет записей.</p>'; return; }
-  logsData.forEach(log => {
+  
+  if (logsData.length === 0) { 
+    list.innerHTML = '<p style="font-size:13px; color:var(--text-muted);">Пока нет записей.</p>'; 
+    showMoreBtn.classList.add('hidden');
+    return; 
+  }
+
+  const VISIBLE_COUNT = 5;
+  const toShow = showAllLogs ? logsData : logsData.slice(0, VISIBLE_COUNT);
+  
+  toShow.forEach(log => {
     const markIcon = log.mark === 'up' ? '▲' : log.mark === 'down' ? '▼' : '—';
     const markColor = log.mark === 'up' ? 'var(--success)' : log.mark === 'down' ? 'var(--danger)' : 'var(--text-muted)';
     const div = document.createElement('div');
@@ -317,6 +347,23 @@ function renderHistory() {
     `;
     list.appendChild(div);
   });
+
+  const remaining = logsData.length - VISIBLE_COUNT;
+  if (remaining > 0 && !showAllLogs) {
+    showMoreBtn.classList.remove('hidden');
+    showMoreBtn.innerText = `Показать ещё (${remaining})`;
+  } else if (showAllLogs && logsData.length > VISIBLE_COUNT) {
+    showMoreBtn.classList.remove('hidden');
+    showMoreBtn.innerText = 'Свернуть';
+  } else {
+    showMoreBtn.classList.add('hidden');
+  }
+}
+
+function toggleShowAllLogs() {
+  hapticFeedback();
+  showAllLogs = !showAllLogs;
+  renderHistory();
 }
 
 function deleteLog(id) {
@@ -338,6 +385,14 @@ function renderCapsule() {
   } else {
     const now = Date.now();
     if (now >= capsuleData.unlockAt) {
+      // Аналитика: use_capsule (open)
+      if (tg && !capsuleOpenSent) {
+        try {
+          tg.sendData(JSON.stringify({ action: "analytics", event: "use_capsule", action_type: "open" }));
+        } catch(e) { console.error(e); }
+        capsuleOpenSent = true;
+      }
+
       container.innerHTML = `
         <h3>Капсула вскрыта</h3>
         <p class="capsule-text" style="color:var(--accent); font-style:italic;">«${capsuleData.text}»</p>
@@ -363,6 +418,14 @@ function sealCapsule() {
   const unlockAt = created + (30 * 24 * 60 * 60 * 1000);
   capsuleData = { text, created, unlockAt };
   saveToCloud('dk_capsule', capsuleData);
+
+  // Аналитика: use_capsule (save)
+  if (tg) {
+    try {
+      tg.sendData(JSON.stringify({ action: "analytics", event: "use_capsule", action_type: "save" }));
+    } catch(e) { console.error(e); }
+  }
+
   showToast('Капсула запечатана. Увидимся через 30 дней.');
   renderCapsule();
 }
@@ -370,6 +433,7 @@ function sealCapsule() {
 function burnCapsule() {
   hapticFeedback(); 
   capsuleData = null;
+  capsuleOpenSent = false; // Сброс флага для аналитики
   removeFromCloud('dk_capsule');
   showToast('Капсула сожжена.');
   renderCapsule();
@@ -377,6 +441,14 @@ function burnCapsule() {
 
 function openReader(id) {
   currentChapterId = id;
+  
+  // Аналитика: start_reading
+  if (id >= 1 && id <= 5 && tg) {
+    try {
+      tg.sendData(JSON.stringify({ action: "analytics", event: "start_reading", chapter_id: id }));
+    } catch(e) { console.error(e); }
+  }
+
   const chapter = CHAPTERS.find(c => c.id === id);
   document.getElementById('reader-title').innerText = chapter.isDiary ? chapter.title : `Глава ${id}. ${chapter.title}`;
   document.getElementById('reader-counter').innerText = chapter.isDiary ? 'Бонусный материал' : `Глава ${id} из 5`;
@@ -465,8 +537,16 @@ function continueReading() {
 }
 
 function switchTab(targetId) {
+  const targetView = document.getElementById(targetId);
+  
+  if (!targetView) {
+    console.error('switchTab: элемент не найден —', targetId);
+    showToast('Ошибка навигации');
+    return;
+  }
+
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.getElementById(targetId).classList.add('active');
+  targetView.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
   const targetBtn = document.querySelector(`.nav-item[data-target="${targetId}"]`);
   if (targetBtn) targetBtn.classList.add('active');
@@ -476,7 +556,6 @@ function switchTab(targetId) {
 
 if (tg) { tg.BackButton.onClick(() => { closeReader(); }); }
 
-// Запуск с загрузкой данных
 const safeInit = () => {
   if (initDone) return;
   initDone = true;
