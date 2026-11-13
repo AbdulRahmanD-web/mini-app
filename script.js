@@ -6,6 +6,67 @@ if (tg) {
   tg.setHeaderColor('#0A0A0A'); 
 }
 
+const ANALYTICS_URL = 'https://darknight-bot-patricv.msk1.amvera.tech/api/analytics';
+
+function sendOpenMain(source = 'direct') {
+  if (sessionStorage.getItem('open_main_sent')) return;
+  
+  if (tg && tg.initData) {
+    fetch(ANALYTICS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        initData: tg.initData,
+        event: 'open_main',
+        source: source
+      })
+    }).then(() => sessionStorage.setItem('open_main_sent', 'true'))
+      .catch(console.error);
+  }
+}
+
+function sendStartReading(chapterId) {
+  if (tg && tg.initData) {
+    fetch(ANALYTICS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        initData: tg.initData,
+        event: 'start_reading',
+        chapter_id: chapterId
+      })
+    }).catch(console.error);
+  }
+}
+
+function sendFinishReview(reviewDay) {
+  if (tg && tg.initData) {
+    fetch(ANALYTICS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        initData: tg.initData,
+        event: 'finish_evening_review',
+        review_day: reviewDay
+      })
+    }).catch(console.error);
+  }
+}
+
+function sendUseCapsule(actionType) {
+  if (tg && tg.initData) {
+    fetch(ANALYTICS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        initData: tg.initData,
+        event: 'use_capsule',
+        action_type: actionType
+      })
+    }).catch(console.error);
+  }
+}
+
 let readProgress = [];
 let chainData = { dates: [] };
 let logsData = [];
@@ -14,10 +75,6 @@ let currentChapterId = 1;
 let selectedMark = 'up';
 let initDone = false;
 let showAllLogs = false;
-
-// Флаги для аналитики
-let openMainSent = false;
-let capsuleOpenSent = false;
 
 function saveToCloud(key, value) {
   const strValue = JSON.stringify(value);
@@ -133,13 +190,7 @@ const firstName = user?.first_name || 'Гость';
 const avatarLetter = firstName.charAt(0).toUpperCase();
 
 function init() {
-  // Аналитика: open_main
-  if (tg && !openMainSent) {
-    try {
-      tg.sendData(JSON.stringify({ action: "analytics", event: "open_main", source: "direct" }));
-    } catch(e) { console.error(e); }
-    openMainSent = true;
-  }
+  sendOpenMain('direct');
 
   document.getElementById('ui-name').innerText = firstName;
   document.getElementById('ui-avatar').innerText = avatarLetter;
@@ -290,12 +341,7 @@ function saveReview() {
   didInput.value = ''; 
   failInput.value = '';
 
-  // Аналитика: finish_evening_review
-  if (tg) {
-    try {
-      tg.sendData(JSON.stringify({ action: "analytics", event: "finish_evening_review", review_day: getTodayKey() }));
-    } catch(e) { console.error(e); }
-  }
+  sendFinishReview(getTodayKey());
 
   if (selectedMark === 'up') showToast('День выигран. Зафиксировано.');
   else if (selectedMark === 'down') showToast('Слив записан. Сделай выводы и вставай.');
@@ -385,13 +431,7 @@ function renderCapsule() {
   } else {
     const now = Date.now();
     if (now >= capsuleData.unlockAt) {
-      // Аналитика: use_capsule (open)
-      if (tg && !capsuleOpenSent) {
-        try {
-          tg.sendData(JSON.stringify({ action: "analytics", event: "use_capsule", action_type: "open" }));
-        } catch(e) { console.error(e); }
-        capsuleOpenSent = true;
-      }
+      sendUseCapsule('open');
 
       container.innerHTML = `
         <h3>Капсула вскрыта</h3>
@@ -419,12 +459,7 @@ function sealCapsule() {
   capsuleData = { text, created, unlockAt };
   saveToCloud('dk_capsule', capsuleData);
 
-  // Аналитика: use_capsule (save)
-  if (tg) {
-    try {
-      tg.sendData(JSON.stringify({ action: "analytics", event: "use_capsule", action_type: "save" }));
-    } catch(e) { console.error(e); }
-  }
+  sendUseCapsule('save');
 
   showToast('Капсула запечатана. Увидимся через 30 дней.');
   renderCapsule();
@@ -433,7 +468,6 @@ function sealCapsule() {
 function burnCapsule() {
   hapticFeedback(); 
   capsuleData = null;
-  capsuleOpenSent = false; // Сброс флага для аналитики
   removeFromCloud('dk_capsule');
   showToast('Капсула сожжена.');
   renderCapsule();
@@ -442,12 +476,7 @@ function burnCapsule() {
 function openReader(id) {
   currentChapterId = id;
   
-  // Аналитика: start_reading
-  if (id >= 1 && id <= 5 && tg) {
-    try {
-      tg.sendData(JSON.stringify({ action: "analytics", event: "start_reading", chapter_id: id }));
-    } catch(e) { console.error(e); }
-  }
+  if (id >= 1 && id <= 5) sendStartReading(id);
 
   const chapter = CHAPTERS.find(c => c.id === id);
   document.getElementById('reader-title').innerText = chapter.isDiary ? chapter.title : `Глава ${id}. ${chapter.title}`;
