@@ -68,6 +68,7 @@ function sendUseCapsule(actionType) {
 }
 
 let readProgress = [];
+let capsuleOpenSent = false;
 let chainData = { dates: [] };
 let logsData = [];
 let capsuleData = null;
@@ -431,8 +432,10 @@ function renderCapsule() {
   } else {
     const now = Date.now();
     if (now >= capsuleData.unlockAt) {
-      sendUseCapsule('open');
-
+      if (!capsuleOpenSent) {
+        sendUseCapsule('open');
+        capsuleOpenSent = true;
+      }
       container.innerHTML = `
         <h3>Капсула вскрыта</h3>
         <p class="capsule-text" style="color:var(--accent); font-style:italic;">«${capsuleData.text}»</p>
@@ -459,6 +462,7 @@ function sealCapsule() {
   const unlockAt = created;
   capsuleData = { text, created, unlockAt };
   saveToCloud('dk_capsule', capsuleData);
+    capsuleOpenSent = false;
 
   sendUseCapsule('save');
 
@@ -469,6 +473,7 @@ function sealCapsule() {
 function burnCapsule() {
   hapticFeedback(); 
   capsuleData = null;
+    capsuleOpenSent = false;
   removeFromCloud('dk_capsule');
   showToast('Капсула сожжена.');
   renderCapsule();
