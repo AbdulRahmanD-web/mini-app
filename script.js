@@ -455,7 +455,8 @@ function sealCapsule() {
   const text = input.value.trim().substring(0, 200);
   if (!text) return showToast('Напиши обещание.');
   const created = Date.now(); 
-  const unlockAt = created + (30 * 24 * 60 * 60 * 1000);
+  // const unlockAt = created + (30 * 24 * 60 * 60 * 1000);
+  const unlockAt = created;
   capsuleData = { text, created, unlockAt };
   saveToCloud('dk_capsule', capsuleData);
 
@@ -593,4 +594,4 @@ const safeInit = () => {
 };
 
 loadAllData(safeInit);
-setTimeout(safeInit, 3000);
+setTimeout(safeInit, 3000); 
