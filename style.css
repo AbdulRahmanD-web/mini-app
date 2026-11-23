@@ -238,7 +238,6 @@ p { font-size: 15px; color: var(--text-muted); line-height: 1.6; }
 #ai-native-head h1{font-size:24px;margin:0 0 6px;}
 #ai-native-head p{color:var(--text-muted);font-size:14px; padding: 10px 5px;}
 #ai-native-chips{display:flex;gap:8px;flex-wrap:wrap; padding: 12px 10px;}
-#ai-native-status{font-size: 12px; color: var(--text-muted); text-align: center; margin-bottom: 8px;}
 #ai-native-chips button{background:var(--accent-dim);border:1px solid var(--border);color:var(--text-main);border-radius:999px;padding:7px 12px;font-size:13px;cursor:pointer;}
 #ai-native-box{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;display:flex;flex-direction:column;height:52vh;min-height:340px;overflow:hidden;}
 #ai-native-msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;}
