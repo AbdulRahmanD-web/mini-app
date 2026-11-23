@@ -600,3 +600,69 @@ const safeInit = () => {
 
 loadAllData(safeInit);
 setTimeout(safeInit, 3000); 
+
+const AI_API_URL = 'https://darknight-bot-patricv.msk1.amvera.tech/api/chat';
+const AI_HIST_KEY = 'dk_ai_history_v1';
+let aiHistory = [];
+try { aiHistory = JSON.parse(localStorage.getItem(AI_HIST_KEY) || '[]'); } catch(e){ aiHistory = []; }
+let aiBusy = false, aiAbort = null;
+
+function aiSave(){ try{ localStorage.setItem(AI_HIST_KEY, JSON.stringify(aiHistory.slice(-30))); }catch(e){} }
+function aiDemoReply(q){
+  if (/начать|пустот/i.test(q)) return 'Начни с малого: убери 1 источник мусора сегодня (лента/игры) и прочитай Главу 1. Что именно крадёт у тебя больше всего времени?';
+  if (/10-й|сдаться|мотивац/i.test(q)) return 'На 10-й день все сдаются от перегруза. Урежь план до 25 минут в день и отметь день в трекере. Какой минимум готов делать даже уставшим?';
+  if (/действие|сегодня/i.test(q)) return 'Действие на сегодня: выпиши 3 источника мусора на бумагу и убери 1. Напишешь сюда, что убрал?';
+  return 'Понял. Давай разберём по шагам: что именно хочешь решить? Напиши, где застрял — подскажу вопрос, а не готовый ответ.';
+}
+async function aiSend(preset){
+  if (aiBusy) return;
+  const input = document.getElementById('ai-native-input');
+  const msgs = document.getElementById('ai-native-msgs');
+  const status = document.getElementById('ai-native-status');
+  const sendB = document.getElementById('ai-native-send');
+  const stopB = document.getElementById('ai-native-stop');
+  
+  if (!input || !msgs) return;
+  const q = (preset !== undefined ? preset : input.value).trim();
+  if (!q) return;
+  aiBusy = true; sendB.style.display='none'; stopB.style.display='block';
+  input.value='';
+  const add = (cls, t)=>{ const d=document.createElement('div'); d.className='ai-m '+cls; d.textContent=t; msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight; return d; };
+  const b = add('ai-a', 'печатает...'); status.textContent='ИИ печатает...';
+    add('ai-u', q);
+  aiAbort = new AbortController();
+  try{
+    const r = await fetch(AI_API_URL, {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({message:q, history:aiHistory.slice(-10)}), signal: aiAbort.signal});
+    if (!r.ok) throw new Error('HTTP '+r.status);
+    const j = await r.json();
+    const txt = (j.reply || j.text || '').trim() || aiDemoReply(q);
+        b.textContent = txt; 
+    aiHistory.push({role:'user', content:q}); 
+    aiHistory.push({role:'assistant', content:txt});
+  }catch(e){
+    if (String(e).includes('abort')) {
+      b.textContent = 'Остановлено.';
+    } else {
+      b.textContent = aiDemoReply(q);
+    }
+  }
+  aiSave(); aiBusy=false; sendB.style.display=''; stopB.style.display='none';
+  status.textContent='Готов к общению.'; msgs.scrollTop=msgs.scrollHeight;
+}
+function aiInit(){
+  const sec = document.getElementById('view-ai');
+  if (!sec || sec.dataset.aiInit) return; sec.dataset.aiInit='1';
+  const msgs = document.getElementById('ai-native-msgs');
+  const d = document.createElement('div'); d.className='ai-m ai-s';
+  msgs.appendChild(d);
+  aiHistory.forEach(m=>{ const x=document.createElement('div'); x.className='ai-m '+(m.role==='user'?'ai-u':'ai-a'); x.textContent=m.content; msgs.appendChild(x); });
+  document.getElementById('ai-native-send').onclick=()=>aiSend();
+  document.getElementById('ai-native-stop').onclick=()=>{ try{ aiAbort.abort(); }catch(e){} };
+  document.getElementById('ai-native-input').onkeydown=e=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); aiSend(); } };
+  document.getElementById('ai-native-clear').onclick=()=>{ aiHistory=[]; aiSave(); msgs.innerHTML=''; aiInit.done=false; delete sec.dataset.aiInit; aiInit(); };
+  document.getElementById('ai-native-home').onclick=()=>switchTab('view-home');
+  sec.querySelectorAll('#ai-native-chips button').forEach(x=>x.onclick=()=>aiSend(x.dataset.q));
+}
+document.addEventListener('DOMContentLoaded', aiInit);
+aiInit();

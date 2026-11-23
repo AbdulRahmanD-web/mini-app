@@ -25,6 +25,29 @@
   <div class="app-container">
     
     <main class="main-content" id="main-scroll">
+      <section id="view-ai" class="view">
+  <div id="ai-native-head">
+    <h1>🤖 ИИ-помощник</h1>
+    <p>Прототип встроенного чата. Не даёт готовых ответов — помогает думать. Спроси про главы, план и дисциплину.</p>
+
+  </div>
+  <div id="ai-native-box">
+    <div id="ai-native-msgs"></div>
+        <div id="ai-native-chips">
+      <button data-q="С чего начать?">С чего начать?</button>
+    </div>
+    <div id="ai-native-row">
+      <div id="ai-native-status">Готов к общению.</div>
+      <textarea id="ai-native-input" rows="1" placeholder="Напиши вопрос..."></textarea>
+      <button id="ai-native-send">➤</button>
+      <button id="ai-native-stop" style="display:none">Стоп</button>
+    </div>
+  </div>
+  <div id="ai-native-bar">
+    <button id="ai-native-clear">Очистить историю</button>
+    <button id="ai-native-home">На главную</button>
+  </div>
+</section>
       
       <section id="view-home" class="view active">
         <div id="home-guest">
@@ -214,7 +237,11 @@
       <button type="button" class="nav-item" data-target="view-materials" onclick="switchTab('view-materials')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg><span>Материалы</span>
       </button>
-      <button type="button" class="nav-item" data-target="view-profile" onclick="switchTab('view-profile')">
+
+      <button type="button" class="nav-item" data-target="view-ai" onclick="switchTab('view-ai')">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4M8 4h8"/><circle cx="9" cy="14" r="1"/><circle cx="15" cy="14" r="1"/></svg><span>Ассистент</span>
+</button>     
+ <button type="button" class="nav-item" data-target="view-profile" onclick="switchTab('view-profile')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg><span>Профиль</span>
       </button>
       <button type="button" class="nav-item" data-target="view-support" onclick="switchTab('view-support')">
