@@ -747,7 +747,7 @@ function aiInit() {
     aiSave();
     dom.msgs.innerHTML = '';
     appendGreeting();
-    if (dom.status) dom.status.textContent = 'Готов к общению.';
+
   };
   if (dom.homeB && typeof switchTab === 'function') {
     dom.homeB.onclick = () => switchTab('view-home');
