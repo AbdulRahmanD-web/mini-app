@@ -617,12 +617,6 @@ function aiSave() {
   try { localStorage.setItem(AI_HIST_KEY, JSON.stringify(aiHistory.slice(-30))); } catch (e) {}
 }
 
-function aiDemoReply(q) {
-  if (/начать|пустот/i.test(q)) return 'Начни с малого: убери 1 источник мусора сегодня (лента/игры) и прочитай Главу 1. Что именно крадёт у тебя больше всего времени?';
-  if (/10-й|сдаться|мотивац/i.test(q)) return 'На 10-й день все сдаются от перегруза. Урежь план до 25 минут в день и отметь день в трекере. Какой минимум готов делать даже уставшим?';
-  if (/действие|сегодня/i.test(q)) return 'Действие на сегодня: выпиши 3 источника мусора на бумагу и убери 1. Напишешь сюда, что убрал?';
-  return 'Понял. Давай разберём по шагам: что именно хочешь решить? Напиши, где застрял — подскажу вопрос, а не готовый ответ.';
-}
 
 async function aiSend(preset) {
   if (aiBusy) return;
@@ -747,3 +741,31 @@ function aiInit() {
 
 document.addEventListener('DOMContentLoaded', aiInit);
 aiInit();
+
+async function askAI(message, history) {
+  try {
+    const response = await fetch('https://darknight-bot-patricv.msk1.amvera.tech/api/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        initData: Telegram.WebApp.initData, // Обязательно!
+        message: message,
+        history: history // массив объектов {role: "user"|"assistant", content: "текст"}
+      })
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      // Выведи data.reply в чат Mini App
+      console.log("Ответ ИИ:", data.reply);
+    } else {
+      // Обработка ошибок (data.error)
+      console.error("Ошибка:", data.error);
+    }
+  } catch (error) {
+    console.error("Сетевая ошибка:", error);
+  }
+}
