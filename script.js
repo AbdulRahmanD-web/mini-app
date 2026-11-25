@@ -617,155 +617,146 @@ function aiSave() {
   try { localStorage.setItem(AI_HIST_KEY, JSON.stringify(aiHistory.slice(-30))); } catch (e) {}
 }
 
+// Вспомогательная функция для получения элементов (чтобы не дублировать getElementById)
+const getAiDom = () => ({
+  sec: document.getElementById('view-ai'),
+  input: document.getElementById('ai-native-input'),
+  msgs: document.getElementById('ai-native-msgs'),
+  status: document.getElementById('ai-native-status'),
+  sendB: document.getElementById('ai-native-send'),
+  stopB: document.getElementById('ai-native-stop'),
+  clearB: document.getElementById('ai-native-clear'),
+  homeB: document.getElementById('ai-native-home')
+});
 
 async function aiSend(preset) {
   if (aiBusy) return;
+  const dom = getAiDom();
+  if (!dom.input || !dom.msgs) return;
 
-  const input  = document.getElementById('ai-native-input');
-  const msgs   = document.getElementById('ai-native-msgs');
-  const status = document.getElementById('ai-native-status');
-  const sendB  = document.getElementById('ai-native-send');
-  const stopB  = document.getElementById('ai-native-stop');
-
-  if (!input || !msgs) return;
-
-  const q = (preset !== undefined ? preset : input.value).trim();
+  const q = (preset !== undefined ? preset : dom.input.value).trim();
   if (!q) return;
 
   aiBusy = true;
-  if (sendB) sendB.style.display = 'none';
-  if (stopB) stopB.style.display = 'block';
-  if (status) status.textContent = 'ИИ печатает...';
-  input.value = '';
+  if (dom.sendB) dom.sendB.style.display = 'none';
+  if (dom.stopB) dom.stopB.style.display = 'block';
+  if (dom.status) dom.status.textContent = 'ИИ печатает...';
+  dom.input.value = '';
 
   const add = (cls, t) => {
     const d = document.createElement('div');
     d.className = 'ai-m ' + cls;
     d.textContent = t;
-    msgs.appendChild(d);
-    msgs.scrollTop = msgs.scrollHeight;
+    dom.msgs.appendChild(d);
+    dom.msgs.scrollTop = dom.msgs.scrollHeight;
     return d;
   };
 
-  // Порядок: сначала сообщение пользователя, потом плейсхолдер ответа
   add('ai-u', q);
   const b = add('ai-a', 'печатает...');
 
-  // Пуш пользовательского сообщения сразу — не потеряется при ошибке/abort
   aiHistory.push({ role: 'user', content: q });
-
   aiAbort = new AbortController();
   let replyText = '';
 
+  // Берем существующую AI_API_URL или используем адрес Amvera по умолчанию
+  const endpoint = typeof AI_API_URL !== 'undefined' 
+    ? AI_API_URL 
+    : 'https://amvera.tech';
+
   try {
-    const r = await fetch(AI_API_URL, {
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: q, history: aiHistory.slice(-11, -1) }),
+      body: JSON.stringify({
+        initData: window.Telegram?.WebApp?.initData || '',
+        message: q,
+        history: aiHistory.slice(-11, -1)
+      }),
       signal: aiAbort.signal
     });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const j = await r.json();
-    replyText = (j.reply || j.text || '').trim();
-    if (!replyText) replyText = aiDemoReply(q);
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error('Ошибка сервера:', data.error);
+      throw new Error(data.error || 'HTTP ' + response.status);
+    }
+
+    replyText = (data.reply || data.text || '').trim();
+    if (!replyText && typeof aiDemoReply === 'function') {
+      replyText = aiDemoReply(q);
+    }
   } catch (e) {
     if (e && e.name === 'AbortError') {
       b.textContent = 'Остановлено.';
-      // сохраняем user, но без assistant
       aiSave();
       return;
     }
-    replyText = aiDemoReply(q);
+    console.error('Ошибка запроса:', e);
+    replyText = typeof aiDemoReply === 'function' 
+      ? aiDemoReply(q) 
+      : 'Ошибка связи с сервером.';
   } finally {
     aiBusy = false;
     aiAbort = null;
-    if (sendB) sendB.style.display = '';
-    if (stopB) stopB.style.display = 'none';
-    if (status) status.textContent = 'Готов к общению.';
+    if (dom.sendB) dom.sendB.style.display = '';
+    if (dom.stopB) dom.stopB.style.display = 'none';
+    if (dom.status) dom.status.textContent = 'Готов к общению.';
   }
 
   b.textContent = replyText;
   aiHistory.push({ role: 'assistant', content: replyText });
   aiSave();
-  msgs.scrollTop = msgs.scrollHeight;
+  dom.msgs.scrollTop = dom.msgs.scrollHeight;
 }
 
 function aiInit() {
-  const sec = document.getElementById('view-ai');
-  if (!sec || sec.dataset.aiInit) return;
-  sec.dataset.aiInit = '1';
+  const dom = getAiDom();
+  if (!dom.sec || dom.sec.dataset.aiInit || !dom.msgs) return;
+  dom.sec.dataset.aiInit = '1';
 
-  const msgs = document.getElementById('ai-native-msgs');
-  if (!msgs) return;
+  const appendGreeting = () => {
+    const h = document.createElement('div');
+    h.className = 'ai-m ai-s';
+    h.textContent = 'Привет. Спроси что угодно.';
+    dom.msgs.appendChild(h);
+  };
 
-  // Приветствие
-  const hello = document.createElement('div');
-  hello.className = 'ai-m ai-s';
-  hello.textContent = 'Привет. Спроси что угодно.';
-  msgs.appendChild(hello);
+  appendGreeting();
 
   aiHistory.forEach(m => {
     const x = document.createElement('div');
     x.className = 'ai-m ' + (m.role === 'user' ? 'ai-u' : 'ai-a');
     x.textContent = m.content;
-    msgs.appendChild(x);
+    dom.msgs.appendChild(x);
   });
 
-  const sendB  = document.getElementById('ai-native-send');
-  const stopB  = document.getElementById('ai-native-stop');
-  const input  = document.getElementById('ai-native-input');
-  const clearB = document.getElementById('ai-native-clear');
-  const homeB  = document.getElementById('ai-native-home');
-
-  if (sendB)  sendB.onclick  = () => aiSend();
-  if (stopB)  stopB.onclick  = () => { try { aiAbort && aiAbort.abort(); } catch (e) {} };
-  if (input)  input.onkeydown = e => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); aiSend(); }
+  if (dom.sendB) dom.sendB.onclick = () => aiSend();
+  if (dom.stopB) dom.stopB.onclick = () => {
+    try { aiAbort && aiAbort.abort(); } catch (e) {}
   };
-  if (clearB) clearB.onclick = () => {
+  if (dom.input) dom.input.onkeydown = e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      aiSend();
+    }
+  };
+  if (dom.clearB) dom.clearB.onclick = () => {
     aiHistory = [];
     aiSave();
-    msgs.innerHTML = '';
-    const h = document.createElement('div');
-    h.className = 'ai-m ai-s';
-    h.textContent = 'Привет. Спроси что угодно.';
-    msgs.appendChild(h);
-    if (status) status.textContent = 'Готов к общению.';
+    dom.msgs.innerHTML = '';
+    appendGreeting();
+    if (dom.status) dom.status.textContent = 'Готов к общению.';
   };
-  if (homeB && typeof switchTab === 'function') homeB.onclick = () => switchTab('view-home');
+  if (dom.homeB && typeof switchTab === 'function') {
+    dom.homeB.onclick = () => switchTab('view-home');
+  }
 
-  sec.querySelectorAll('#ai-native-chips button').forEach(x => {
-    x.onclick = () => aiSend(x.dataset.q);
+  dom.sec.querySelectorAll('#ai-native-chips button').forEach(btn => {
+    btn.onclick = () => aiSend(btn.dataset.q);
   });
 }
 
 document.addEventListener('DOMContentLoaded', aiInit);
 aiInit();
-
-async function askAI(message, history) {
-  try {
-    const response = await fetch('https://darknight-bot-patricv.msk1.amvera.tech/api/chat', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        initData: Telegram.WebApp.initData, // Обязательно!
-        message: message,
-        history: history // массив объектов {role: "user"|"assistant", content: "текст"}
-      })
-    });
-
-    const data = await response.json();
-
-    if (response.ok) {
-      // Выведи data.reply в чат Mini App
-      console.log("Ответ ИИ:", data.reply);
-    } else {
-      // Обработка ошибок (data.error)
-      console.error("Ошибка:", data.error);
-    }
-  } catch (error) {
-    console.error("Сетевая ошибка:", error);
-  }
-}
