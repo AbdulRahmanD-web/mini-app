@@ -674,8 +674,15 @@ async function aiSend(preset) {
 
     // ИСПРАВЛЕНИЕ БАГА 1 и 4: Сначала проверяем response.ok, потом парсим JSON.
     // Если сервер вернул 500 ошибку (HTML), мы не будем пытаться парсить его как JSON.
+    // Проверяем статус ответа и кидаем разные ошибки для 429 и 500
     if (!response.ok) {
-      throw new Error('HTTP ' + response.status);
+      if (response.status === 429) {
+        throw new Error('429');
+      } else if (response.status === 500) {
+        throw new Error('500');
+      } else {
+        throw new Error('HTTP ' + response.status);
+      }
     }
 
     const data = await response.json();
@@ -691,14 +698,13 @@ async function aiSend(preset) {
     aiHistory.push({ role: 'assistant', content: replyText });
     aiSave();
 
-  } catch (e) {
+  }  catch (e) {
     if (e && e.name === 'AbortError') {
       b.textContent = 'Остановлено.';
-      return; // При остановке НЕ сохраняем в историю
+      return;
     }
     
     console.error('Ошибка запроса:', e);
-    // Если упала сеть, показываем демо-ответ, но НЕ сохраняем его в историю.
     replyText = typeof aiDemoReply === 'function' 
       ? aiDemoReply(q) 
       : 'Ошибка связи с сервером.';
