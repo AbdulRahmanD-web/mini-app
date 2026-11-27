@@ -660,7 +660,7 @@ async function aiSend(preset) {
   aiAbort = new AbortController();
   let replyText = '';
 
-  try {
+    try {
     const response = await fetch(AI_API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -672,11 +672,8 @@ async function aiSend(preset) {
       signal: aiAbort.signal
     });
 
-    // ИСПРАВЛЕНИЕ БАГА 1 и 4: Сначала проверяем response.ok, потом парсим JSON.
-    // Если сервер вернул 500 ошибку (HTML), мы не будем пытаться парсить его как JSON.
-    // Проверяем статус ответа и кидаем разные ошибки для 429 и 500
+    // --- НОВЫЙ БЛОК ОБРАБОТКИ СТАТУСОВ ---
     if (!response.ok) {
-      // Обрабатываем статусы прямо здесь, формируем понятный текст
       if (response.status === 429) {
         replyText = 'Слишком много запросов. Подожди минуту.';
       } else if (response.status === 403) {
@@ -686,42 +683,39 @@ async function aiSend(preset) {
       } else {
         replyText = 'Что-то пошло не так. Попробуй ещё раз.';
       }
-      // Показываем это в статусе чата и выходим из try
+      
       if (dom.status) dom.status.textContent = replyText;
       b.textContent = replyText;
-      return;
+      return; // Выходим, НЕ кидаем ошибку, чтобы не попасть в catch
     }
 
+    // Если всё ок — парсим JSON и пушим в историю
     const data = await response.json();
     replyText = (data.reply || data.text || '').trim();
     
-    // Если бэк вернул пустоту, используем демо-ответ
     if (!replyText) {
       replyText = typeof aiDemoReply === 'function' ? aiDemoReply(q) : 'Не удалось получить ответ.';
     }
 
-    // ИСПРАВЛЕНИЕ БАГА 2 и 3: Пушим в историю ТОЛЬКО при успешном запросе!
     aiHistory.push({ role: 'user', content: q });
     aiHistory.push({ role: 'assistant', content: replyText });
     aiSave();
 
-  }   catch (e) {
+  } catch (e) {
     if (e && e.name === 'AbortError') {
       b.textContent = 'Остановлено.';
       return;
     }
     
     console.error('Ошибка запроса:', e);
-    // Сюда попадают только сетевые ошибки (нет интернета, сервер недоступен)
     replyText = 'Ошибка связи с сервером. Проверь интернет.';
     if (dom.status) dom.status.textContent = replyText;
-  }
-   finally {
+  } finally {
     aiBusy = false;
     aiAbort = null;
     if (dom.sendB) dom.sendB.style.display = '';
     if (dom.stopB) dom.stopB.style.display = 'none';
-    if (dom.status) dom.status.textContent = 'Готов к общению.';
+    // ВАЖНО: не перезаписываем статус в finally, чтобы сообщение об ошибке осталось на экране
   }
 
   b.textContent = replyText;
