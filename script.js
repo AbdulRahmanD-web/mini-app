@@ -655,45 +655,50 @@ async function aiSend(preset) {
   add('ai-u', q);
   const b = add('ai-a', 'печатает...');
 
-  aiHistory.push({ role: 'user', content: q });
+  // Убрали aiHistory.push юзера отсюда. Теперь мы пушим только при успехе.
+  
   aiAbort = new AbortController();
   let replyText = '';
 
-  // Берем существующую AI_API_URL или используем адрес Amvera по умолчанию
-  const endpoint = typeof AI_API_URL !== 'undefined' 
-    ? AI_API_URL 
-    : 'https://amvera.tech';
-
   try {
-    const response = await fetch(endpoint, {
+    const response = await fetch(AI_API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         initData: window.Telegram?.WebApp?.initData || '',
         message: q,
-        history: aiHistory.slice(-11, -1)
+        history: aiHistory.slice(-10)
       }),
       signal: aiAbort.signal
     });
 
-    const data = await response.json();
-
+    // ИСПРАВЛЕНИЕ БАГА 1 и 4: Сначала проверяем response.ok, потом парсим JSON.
+    // Если сервер вернул 500 ошибку (HTML), мы не будем пытаться парсить его как JSON.
     if (!response.ok) {
-      console.error('Ошибка сервера:', data.error);
-      throw new Error(data.error || 'HTTP ' + response.status);
+      throw new Error('HTTP ' + response.status);
     }
 
+    const data = await response.json();
     replyText = (data.reply || data.text || '').trim();
-    if (!replyText && typeof aiDemoReply === 'function') {
-      replyText = aiDemoReply(q);
+    
+    // Если бэк вернул пустоту, используем демо-ответ
+    if (!replyText) {
+      replyText = typeof aiDemoReply === 'function' ? aiDemoReply(q) : 'Не удалось получить ответ.';
     }
+
+    // ИСПРАВЛЕНИЕ БАГА 2 и 3: Пушим в историю ТОЛЬКО при успешном запросе!
+    aiHistory.push({ role: 'user', content: q });
+    aiHistory.push({ role: 'assistant', content: replyText });
+    aiSave();
+
   } catch (e) {
     if (e && e.name === 'AbortError') {
       b.textContent = 'Остановлено.';
-      aiSave();
-      return;
+      return; // При остановке НЕ сохраняем в историю
     }
+    
     console.error('Ошибка запроса:', e);
+    // Если упала сеть, показываем демо-ответ, но НЕ сохраняем его в историю.
     replyText = typeof aiDemoReply === 'function' 
       ? aiDemoReply(q) 
       : 'Ошибка связи с сервером.';
@@ -706,8 +711,6 @@ async function aiSend(preset) {
   }
 
   b.textContent = replyText;
-  aiHistory.push({ role: 'assistant', content: replyText });
-  aiSave();
   dom.msgs.scrollTop = dom.msgs.scrollHeight;
 }
 
