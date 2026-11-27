@@ -676,13 +676,20 @@ async function aiSend(preset) {
     // Если сервер вернул 500 ошибку (HTML), мы не будем пытаться парсить его как JSON.
     // Проверяем статус ответа и кидаем разные ошибки для 429 и 500
     if (!response.ok) {
+      // Обрабатываем статусы прямо здесь, формируем понятный текст
       if (response.status === 429) {
-        throw new Error('429');
+        replyText = 'Слишком много запросов. Подожди минуту.';
+      } else if (response.status === 403) {
+        replyText = 'Ошибка доступа. Перезайди в приложение.';
       } else if (response.status === 500) {
-        throw new Error('500');
+        replyText = 'Ошибка сервера. Попробуй позже.';
       } else {
-        throw new Error('HTTP ' + response.status);
+        replyText = 'Что-то пошло не так. Попробуй ещё раз.';
       }
+      // Показываем это в статусе чата и выходим из try
+      if (dom.status) dom.status.textContent = replyText;
+      b.textContent = replyText;
+      return;
     }
 
     const data = await response.json();
@@ -698,17 +705,18 @@ async function aiSend(preset) {
     aiHistory.push({ role: 'assistant', content: replyText });
     aiSave();
 
-  }  catch (e) {
+  }   catch (e) {
     if (e && e.name === 'AbortError') {
       b.textContent = 'Остановлено.';
       return;
     }
     
     console.error('Ошибка запроса:', e);
-    replyText = typeof aiDemoReply === 'function' 
-      ? aiDemoReply(q) 
-      : 'Ошибка связи с сервером.';
-  } finally {
+    // Сюда попадают только сетевые ошибки (нет интернета, сервер недоступен)
+    replyText = 'Ошибка связи с сервером. Проверь интернет.';
+    if (dom.status) dom.status.textContent = replyText;
+  }
+   finally {
     aiBusy = false;
     aiAbort = null;
     if (dom.sendB) dom.sendB.style.display = '';
@@ -719,6 +727,7 @@ async function aiSend(preset) {
   b.textContent = replyText;
   dom.msgs.scrollTop = dom.msgs.scrollHeight;
 }
+
 
 function aiInit() {
   const dom = getAiDom();
